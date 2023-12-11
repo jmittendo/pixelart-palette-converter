@@ -3,6 +3,7 @@ import re
 import sys
 
 from PIL import Image, ImageQt
+from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QImage, QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
@@ -20,6 +21,7 @@ from PyQt6.QtWidgets import (
 )
 
 from source.conversion import convert_image
+from source.gui import ImageField
 from source.typing import RGBColor
 
 WINDOW_TITLE = "Pixel Art Palette Converter"
@@ -39,20 +41,20 @@ def main() -> None:
     app = QApplication(sys.argv)
 
     input_image_pixmap = QPixmap("resources/example-image.jpg")
-
-    input_image_label = QLabel()
-    input_image_label.setPixmap(input_image_pixmap)
+    input_image_field = ImageField(input_image_pixmap)
 
     input_image_layout = QHBoxLayout()
-    input_image_layout.addWidget(input_image_label)
+    input_image_layout.addWidget(input_image_field)
 
     input_image_group_box = QGroupBox("Original Image")
     input_image_group_box.setLayout(input_image_layout)
 
-    converted_image_label = QLabel()
+    converted_image_field = ImageField(
+        transform_mode=Qt.TransformationMode.FastTransformation
+    )
 
     converted_image_layout = QHBoxLayout()
-    converted_image_layout.addWidget(converted_image_label)
+    converted_image_layout.addWidget(converted_image_field)
 
     converted_image_group_box = QGroupBox("Converted Image")
     converted_image_group_box.setLayout(converted_image_layout)
@@ -126,7 +128,7 @@ def main() -> None:
         )
         converted_image_pixmap = QPixmap(converted_qimage)
 
-        converted_image_label.setPixmap(converted_image_pixmap)
+        converted_image_field.setPixmap(converted_image_pixmap)
 
     convert_button = QPushButton("Convert Image")
     convert_button.clicked.connect(on_convert_image)
