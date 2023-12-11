@@ -8,10 +8,10 @@ def convert_image(
     image: Image.Image,
     colors: list[RGBColor] | None = None,
     downsample_factor: int | None = None,
-    resample_mode: Image.Resampling = Image.Resampling.NEAREST,
+    resampling_mode: Image.Resampling = Image.Resampling.NEAREST,
 ) -> Image.Image:
     if downsample_factor is not None:
-        image = _downsample_image(image, downsample_factor, resample_mode)
+        image = _downsample_image(image, downsample_factor, resampling_mode)
 
     if colors is not None:
         image = _recolor_image(image, colors)
@@ -20,7 +20,7 @@ def convert_image(
 
 
 def _downsample_image(
-    image: Image.Image, factor: int, resample_mode: Image.Resampling
+    image: Image.Image, factor: int, resampling_mode: Image.Resampling
 ) -> Image.Image:
     if factor < 1:
         raise ValueError("Downsample factor must not be smaller than 1")
@@ -30,7 +30,7 @@ def _downsample_image(
     new_width = img_width // factor
     new_height = img_height // factor
 
-    return image.resize((new_width, new_height), resample=resample_mode)
+    return image.resize((new_width, new_height), resample=resampling_mode)
 
 
 def _recolor_image(image: Image.Image, colors: list[RGBColor]) -> Image.Image:

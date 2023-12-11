@@ -15,7 +15,7 @@ COLORS = [
     (255, 255, 0),
     (255, 255, 255),
 ]
-RESAMPLE_MODE = Image.Resampling.BICUBIC
+RESAMPLING_MODE = Image.Resampling.BICUBIC
 
 
 def main() -> None:
@@ -45,7 +45,7 @@ def main() -> None:
         image,
         colors=COLORS,
         downsample_factor=downsample_factor,
-        resample_mode=RESAMPLE_MODE,
+        resampling_mode=RESAMPLING_MODE,
     )
 
     output_path = image_file_path.with_name(f"{image_file_path.stem}_converted.png")
