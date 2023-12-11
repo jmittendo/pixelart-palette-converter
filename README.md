@@ -9,6 +9,11 @@ Example
 -------
 ![Conversion Example](docs/example.png)
 
+Example of an image conversion using a four-color palette
+by [Kerrie Lake](https://lospec.com/palette-list/mist-gb), a downsample factor of 16,
+and
+[**Pillow**'s "box" resampling mode](https://pillow.readthedocs.io/en/stable/handbook/concepts.html#PIL.Image.Resampling.BOX).
+
 Installation
 ------------
 1. Download and install **git** on your system: https://git-scm.com/downloads.
@@ -38,3 +43,11 @@ Installation
     ```sh
     pip install -r requirements.txt
     ```
+
+Usage
+-----
+After [installing](#installation), activate the virtual environment if necessary (check
+installation step 5) and run the application with:
+```sh
+    python gui_application.py
+```
