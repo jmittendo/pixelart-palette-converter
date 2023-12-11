@@ -22,6 +22,7 @@ class ImageField(QLabel):
         self._transform_mode = transform_mode
 
         self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._set_resized_pixmap()
 
     def resizeEvent(self, event: QResizeEvent) -> None:
