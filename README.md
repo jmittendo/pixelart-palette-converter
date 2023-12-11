@@ -5,6 +5,10 @@ pixelart-palette-converter
 images into [pixel art](https://en.wikipedia.org/wiki/Pixel_art) style with a fixed
 color palette.
 
+Example
+-------
+![Conversion Example](docs/example.png)
+
 Installation
 ------------
 1. Download and install **git** on your system: https://git-scm.com/downloads.
