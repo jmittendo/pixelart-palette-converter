@@ -31,25 +31,6 @@ MINIMUM_WINDOW_SIZE = (1280, 540)
 def main() -> None:
     app = QApplication(sys.argv)
 
-    input_image_pixmap = QPixmap("resources/example-image.jpg")
-    input_image_field = ImageField(input_image_pixmap)
-
-    input_image_layout = QHBoxLayout()
-    input_image_layout.addWidget(input_image_field)
-
-    input_image_group_box = QGroupBox("Original Image")
-    input_image_group_box.setLayout(input_image_layout)
-
-    converted_image_field = ImageField(
-        transform_mode=Qt.TransformationMode.FastTransformation
-    )
-
-    converted_image_layout = QHBoxLayout()
-    converted_image_layout.addWidget(converted_image_field)
-
-    converted_image_group_box = QGroupBox("Converted Image")
-    converted_image_group_box.setLayout(converted_image_layout)
-
     colors_option_label = QLabel("Colors:")
     colors_option_list_widget = QListWidget()
 
@@ -186,10 +167,29 @@ def main() -> None:
         QSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
     )
 
+    input_image_pixmap = QPixmap("resources/example-image.jpg")
+    input_image_field = ImageField(input_image_pixmap)
+
+    input_image_layout = QHBoxLayout()
+    input_image_layout.addWidget(input_image_field)
+
+    input_image_group_box = QGroupBox("Original Image")
+    input_image_group_box.setLayout(input_image_layout)
+
+    converted_image_field = ImageField(
+        transform_mode=Qt.TransformationMode.FastTransformation
+    )
+
+    converted_image_layout = QHBoxLayout()
+    converted_image_layout.addWidget(converted_image_field)
+
+    converted_image_group_box = QGroupBox("Converted Image")
+    converted_image_group_box.setLayout(converted_image_layout)
+
     central_layout = QHBoxLayout()
+    central_layout.addWidget(options_group_box, stretch=1)
     central_layout.addWidget(input_image_group_box, stretch=1)
     central_layout.addWidget(converted_image_group_box, stretch=1)
-    central_layout.addWidget(options_group_box, stretch=1)
 
     central_widget = QWidget()
     central_widget.setLayout(central_layout)
