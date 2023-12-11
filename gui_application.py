@@ -1,5 +1,6 @@
 import ast
 import sys
+from pathlib import Path
 
 from PIL import Image, ImageQt
 from PyQt6.QtCore import Qt
@@ -18,6 +19,8 @@ from PyQt6.QtWidgets import (
     QSpinBox,
     QVBoxLayout,
     QWidget,
+    QLineEdit,
+    QFileDialog,
 )
 
 from source.conversion import convert_image
@@ -30,6 +33,34 @@ MINIMUM_WINDOW_SIZE = (1280, 540)
 
 def main() -> None:
     app = QApplication(sys.argv)
+
+    image_select_label = QLabel("Select Image:")
+
+    def on_image_select_line_edit_change():
+        file_path = image_select_line_edit.text()
+
+        if Path(file_path).is_file():
+            input_image_field.setPixmap(QPixmap(file_path))
+        else:
+            input_image_field.setPixmap(QPixmap())
+
+    def on_select_image():
+        input_image_path = QFileDialog.getOpenFileName()[0]
+
+        if input_image_path == "":
+            return
+
+        image_select_line_edit.setText(input_image_path)
+
+    image_select_line_edit = QLineEdit()
+    image_select_line_edit.textChanged.connect(on_image_select_line_edit_change)
+
+    image_select_button = QPushButton("Browse...")
+    image_select_button.clicked.connect(on_select_image)
+
+    image_select_layout = QHBoxLayout()
+    image_select_layout.addWidget(image_select_line_edit)
+    image_select_layout.addWidget(image_select_button)
 
     colors_option_label = QLabel("Colors:")
     colors_option_list_widget = QListWidget()
@@ -76,14 +107,6 @@ def main() -> None:
     colors_option_bottom_layout.addWidget(colors_option_edit_button)
     colors_option_bottom_layout.addWidget(colors_option_remove_button)
 
-    colors_option_layout = QVBoxLayout()
-    colors_option_layout.addWidget(colors_option_label)
-    colors_option_layout.addWidget(colors_option_list_widget)
-    colors_option_layout.addLayout(colors_option_bottom_layout)
-
-    colors_option_widget = QWidget()
-    colors_option_widget.setLayout(colors_option_layout)
-
     downsample_option_label = QLabel("Downsample factor:")
 
     downsample_option_spin_box = QSpinBox()
@@ -93,9 +116,6 @@ def main() -> None:
     downsample_option_layout.addWidget(downsample_option_label)
     downsample_option_layout.addStretch(stretch=1)
     downsample_option_layout.addWidget(downsample_option_spin_box)
-
-    downsample_option_widget = QWidget()
-    downsample_option_widget.setLayout(downsample_option_layout)
 
     resampling_option_label = QLabel("Resampling mode:")
 
@@ -109,11 +129,8 @@ def main() -> None:
     resampling_option_layout.addStretch(stretch=1)
     resampling_option_layout.addWidget(resampling_option_combo_box)
 
-    resampling_option_widget = QWidget()
-    resampling_option_widget.setLayout(resampling_option_layout)
-
     def on_convert_image() -> None:
-        input_image = ImageQt.fromqpixmap(input_image_pixmap)
+        input_image = ImageQt.fromqpixmap(input_image_field.default_pixmap)
 
         colors: list[RGBColor] | None = []
 
@@ -155,9 +172,15 @@ def main() -> None:
     convert_button.clicked.connect(on_convert_image)
 
     options_layout = QVBoxLayout()
-    options_layout.addWidget(colors_option_widget)
-    options_layout.addWidget(downsample_option_widget)
-    options_layout.addWidget(resampling_option_widget)
+    options_layout.addWidget(image_select_label)
+    options_layout.addLayout(image_select_layout)
+    options_layout.addStretch(stretch=1)
+    options_layout.addWidget(colors_option_label)
+    options_layout.addWidget(colors_option_list_widget)
+    options_layout.addLayout(colors_option_bottom_layout)
+    options_layout.addStretch(stretch=1)
+    options_layout.addLayout(downsample_option_layout)
+    options_layout.addLayout(resampling_option_layout)
     options_layout.addStretch(stretch=1)
     options_layout.addWidget(convert_button)
 
@@ -167,8 +190,7 @@ def main() -> None:
         QSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
     )
 
-    input_image_pixmap = QPixmap("resources/example-image.jpg")
-    input_image_field = ImageField(input_image_pixmap)
+    input_image_field = ImageField()
 
     input_image_layout = QHBoxLayout()
     input_image_layout.addWidget(input_image_field)

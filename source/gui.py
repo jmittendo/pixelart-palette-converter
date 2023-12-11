@@ -18,21 +18,21 @@ class ImageField(QLabel):
         else:
             super().__init__(None, parent, flags)
 
-        self._default_pixmap = pixmap
+        self.default_pixmap = pixmap
         self._transform_mode = transform_mode
 
         self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
         self._set_resized_pixmap()
 
     def resizeEvent(self, event: QResizeEvent) -> None:
-        if self._default_pixmap is not None:
-            self.setPixmap(self._default_pixmap)
+        if self.default_pixmap is not None:
+            self.setPixmap(self.default_pixmap)
 
         super().resizeEvent(event)
 
     def _set_resized_pixmap(self) -> None:
-        if self._default_pixmap is not None:
-            scaled_pixmap = self._default_pixmap.scaled(
+        if self.default_pixmap is not None:
+            scaled_pixmap = self.default_pixmap.scaled(
                 self.size(),
                 aspectRatioMode=Qt.AspectRatioMode.KeepAspectRatio,
                 transformMode=self._transform_mode,
@@ -41,5 +41,5 @@ class ImageField(QLabel):
             super().setPixmap(scaled_pixmap)
 
     def setPixmap(self, pixmap: QPixmap) -> None:
-        self._default_pixmap = pixmap
+        self.default_pixmap = pixmap
         self._set_resized_pixmap()
