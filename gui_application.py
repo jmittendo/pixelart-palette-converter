@@ -88,8 +88,9 @@ def main() -> None:
     resampling_option_label = QLabel("Resampling mode:")
 
     resampling_option_combo_box = QComboBox()
-    resampling_option_combo_box.addItem("Nearest")
-    resampling_option_combo_box.addItem("Bicubic")
+
+    for resampling_mode in Image.Resampling.__members__:
+        resampling_option_combo_box.addItem(resampling_mode.capitalize())
 
     resampling_option_layout = QHBoxLayout()
     resampling_option_layout.addWidget(resampling_option_label)
@@ -104,14 +105,7 @@ def main() -> None:
         colors = parse_colors_str(colors_str)
         downsample_factor = downsample_option_spin_box.value()
         resampling_mode_str = resampling_option_combo_box.currentText()
-
-        match resampling_mode_str:
-            case "Nearest":
-                resampling_mode = Image.Resampling.NEAREST
-            case "Bicubic":
-                resampling_mode = Image.Resampling.BICUBIC
-            case _:
-                resampling_mode = Image.Resampling.NEAREST
+        resampling_mode = Image.Resampling[resampling_mode_str.upper()]
 
         converted_image = convert_image(
             input_image,
