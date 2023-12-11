@@ -1,6 +1,5 @@
 import ast
 import sys
-from pathlib import Path
 
 from PIL import Image, ImageQt
 from PyQt6.QtCore import Qt
@@ -9,6 +8,7 @@ from PyQt6.QtWidgets import (
     QApplication,
     QColorDialog,
     QComboBox,
+    QFileDialog,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -19,8 +19,6 @@ from PyQt6.QtWidgets import (
     QSpinBox,
     QVBoxLayout,
     QWidget,
-    QLineEdit,
-    QFileDialog,
 )
 
 from source.conversion import convert_image
@@ -33,34 +31,6 @@ MINIMUM_WINDOW_SIZE = (1280, 540)
 
 def main() -> None:
     app = QApplication(sys.argv)
-
-    image_select_label = QLabel("Select Image:")
-
-    def on_image_select_line_edit_change():
-        file_path = image_select_line_edit.text()
-
-        if Path(file_path).is_file():
-            input_image_field.setPixmap(QPixmap(file_path))
-        else:
-            input_image_field.setPixmap(QPixmap())
-
-    def on_select_image():
-        input_image_path = QFileDialog.getOpenFileName()[0]
-
-        if input_image_path == "":
-            return
-
-        image_select_line_edit.setText(input_image_path)
-
-    image_select_line_edit = QLineEdit()
-    image_select_line_edit.textChanged.connect(on_image_select_line_edit_change)
-
-    image_select_button = QPushButton("Browse...")
-    image_select_button.clicked.connect(on_select_image)
-
-    image_select_layout = QHBoxLayout()
-    image_select_layout.addWidget(image_select_line_edit)
-    image_select_layout.addWidget(image_select_button)
 
     colors_option_label = QLabel("Colors:")
     colors_option_list_widget = QListWidget()
@@ -130,7 +100,12 @@ def main() -> None:
     resampling_option_layout.addWidget(resampling_option_combo_box)
 
     def on_convert_image() -> None:
-        input_image = ImageQt.fromqpixmap(input_image_field.default_pixmap)
+        input_image_pixmap = input_image_field.default_pixmap
+
+        if input_image_pixmap is None:
+            return
+
+        input_image = ImageQt.fromqpixmap(input_image_pixmap)
 
         colors: list[RGBColor] | None = []
 
@@ -172,9 +147,6 @@ def main() -> None:
     convert_button.clicked.connect(on_convert_image)
 
     options_layout = QVBoxLayout()
-    options_layout.addWidget(image_select_label)
-    options_layout.addLayout(image_select_layout)
-    options_layout.addStretch(stretch=1)
     options_layout.addWidget(colors_option_label)
     options_layout.addWidget(colors_option_list_widget)
     options_layout.addLayout(colors_option_bottom_layout)
@@ -192,8 +164,20 @@ def main() -> None:
 
     input_image_field = ImageField()
 
-    input_image_layout = QHBoxLayout()
+    def on_select_image() -> None:
+        file_path = QFileDialog.getOpenFileName()[0]
+
+        if file_path == "":
+            return
+
+        input_image_field.setPixmap(QPixmap(file_path))
+
+    input_image_select_button = QPushButton("Select Image...")
+    input_image_select_button.clicked.connect(on_select_image)
+
+    input_image_layout = QVBoxLayout()
     input_image_layout.addWidget(input_image_field)
+    input_image_layout.addWidget(input_image_select_button)
 
     input_image_group_box = QGroupBox("Original Image")
     input_image_group_box.setLayout(input_image_layout)
@@ -202,8 +186,26 @@ def main() -> None:
         transform_mode=Qt.TransformationMode.FastTransformation
     )
 
-    converted_image_layout = QHBoxLayout()
+    def on_save_converted_image() -> None:
+        converted_image_pixmap = converted_image_field.default_pixmap
+
+        if converted_image_pixmap is None:
+            return
+
+        file_path = QFileDialog.getSaveFileName(filter="Images (*.png *.jpg)")[0]
+
+        if file_path == "":
+            return
+
+        converted_image = ImageQt.fromqpixmap(converted_image_pixmap)
+        converted_image.save(file_path)
+
+    converted_image_save_button = QPushButton("Save Converted Image...")
+    converted_image_save_button.clicked.connect(on_save_converted_image)
+
+    converted_image_layout = QVBoxLayout()
     converted_image_layout.addWidget(converted_image_field)
+    converted_image_layout.addWidget(converted_image_save_button)
 
     converted_image_group_box = QGroupBox("Converted Image")
     converted_image_group_box.setLayout(converted_image_layout)
