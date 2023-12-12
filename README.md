@@ -9,10 +9,10 @@ Example
 -------
 ![Conversion Example](docs/example.png)
 
-Example of an image conversion using a four-color palette
-by [Kerrie Lake](https://lospec.com/palette-list/mist-gb), a downsample factor of 16,
-and
-[**Pillow**'s "box" resampling mode](https://pillow.readthedocs.io/en/stable/handbook/concepts.html#PIL.Image.Resampling.BOX).
+Example of an image conversion using a downsampling factor of 16 with 
+[**Pillow**'s "box" resampling mode](https://pillow.readthedocs.io/en/stable/handbook/concepts.html#PIL.Image.Resampling.BOX), 
+grayscale conversion, and a four-color palette by
+[Kerrie Lake](https://lospec.com/palette-list/mist-gb). (Photo by me)
 
 Installation
 ------------
