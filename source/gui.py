@@ -97,7 +97,7 @@ class ParameterGroupBox(QGroupBox):
         resampling_layout.addStretch(stretch=1)
         resampling_layout.addWidget(self._resampling_combo_box)
 
-        self._grayscale_check_box = QCheckBox("Grayscale Conversion")
+        self._grayscale_check_box = QCheckBox("Grayscale conversion")
 
         colors_label = QLabel("Colors:")
         self._colors_list_widget = QListWidget()
