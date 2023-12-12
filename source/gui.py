@@ -22,6 +22,7 @@ from PIL import Image, ImageQt
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QImage, QPixmap, QResizeEvent
 from PyQt6.QtWidgets import (
+    QCheckBox,
     QColorDialog,
     QComboBox,
     QFileDialog,
@@ -96,6 +97,8 @@ class ParameterGroupBox(QGroupBox):
         resampling_layout.addStretch(stretch=1)
         resampling_layout.addWidget(self._resampling_combo_box)
 
+        self._grayscale_check_box = QCheckBox("Grayscale Conversion")
+
         colors_label = QLabel("Colors:")
         self._colors_list_widget = QListWidget()
 
@@ -119,6 +122,8 @@ class ParameterGroupBox(QGroupBox):
         layout = QVBoxLayout()
         layout.addLayout(downsampling_layout)
         layout.addLayout(resampling_layout)
+        layout.addStretch(stretch=1)
+        layout.addWidget(self._grayscale_check_box)
         layout.addStretch(stretch=1)
         layout.addWidget(colors_label)
         layout.addWidget(self._colors_list_widget)
@@ -167,6 +172,16 @@ class ParameterGroupBox(QGroupBox):
 
         input_image = ImageQt.fromqpixmap(input_image_pixmap)
 
+        downsampling_factor = self._downsampling_spin_box.value()
+
+        if downsampling_factor == 1:
+            downsampling_factor = None
+
+        resampling_mode_str = self._resampling_combo_box.currentText()
+        resampling_mode = Image.Resampling[resampling_mode_str.upper()]
+
+        enable_grayscale = self._grayscale_check_box.isChecked()
+
         colors: list[RGBColor] | None = []
 
         for item_index in range(self._colors_list_widget.count()):
@@ -178,19 +193,12 @@ class ParameterGroupBox(QGroupBox):
         if not colors:
             colors = None
 
-        downsampling_factor = self._downsampling_spin_box.value()
-
-        if downsampling_factor == 1:
-            downsampling_factor = None
-
-        resampling_mode_str = self._resampling_combo_box.currentText()
-        resampling_mode = Image.Resampling[resampling_mode_str.upper()]
-
         converted_image = convert_image(
             input_image,
-            colors=colors,
             downsampling_factor=downsampling_factor,
             resampling_mode=resampling_mode,
+            grayscale=enable_grayscale,
+            colors=colors,
         )
         converted_qimage = QImage(
             converted_image.tobytes(),

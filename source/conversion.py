@@ -22,12 +22,16 @@ from .typing import RGBColor
 
 def convert_image(
     image: Image.Image,
-    colors: list[RGBColor] | None = None,
     downsampling_factor: int | None = None,
     resampling_mode: Image.Resampling = Image.Resampling.NEAREST,
+    grayscale: bool = False,
+    colors: list[RGBColor] | None = None,
 ) -> Image.Image:
     if downsampling_factor is not None:
         image = _downsample_image(image, downsampling_factor, resampling_mode)
+
+    if grayscale:
+        image = image.convert("L").convert("RGB")
 
     if colors is not None:
         image = _recolor_image(image, colors)
