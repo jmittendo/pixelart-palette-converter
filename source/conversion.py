@@ -23,11 +23,11 @@ from .typing import RGBColor
 def convert_image(
     image: Image.Image,
     colors: list[RGBColor] | None = None,
-    downsample_factor: int | None = None,
+    downsampling_factor: int | None = None,
     resampling_mode: Image.Resampling = Image.Resampling.NEAREST,
 ) -> Image.Image:
-    if downsample_factor is not None:
-        image = _downsample_image(image, downsample_factor, resampling_mode)
+    if downsampling_factor is not None:
+        image = _downsample_image(image, downsampling_factor, resampling_mode)
 
     if colors is not None:
         image = _recolor_image(image, colors)
@@ -39,7 +39,7 @@ def _downsample_image(
     image: Image.Image, factor: int, resampling_mode: Image.Resampling
 ) -> Image.Image:
     if factor < 1:
-        raise ValueError("Downsample factor must not be smaller than 1")
+        raise ValueError("Downsampling factor must not be smaller than 1")
 
     img_width, img_height = image.size
 
