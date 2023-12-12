@@ -75,23 +75,6 @@ class ParameterGroupBox(QGroupBox):
         self._input_image_label = input_image_label
         self._output_image_label = output_image_label
 
-        colors_label = QLabel("Colors:")
-        self._colors_list_widget = QListWidget()
-
-        self._colors_add_push_button = QPushButton("Add")
-        self._colors_add_push_button.clicked.connect(self._add_color)
-
-        self._colors_edit_push_button = QPushButton("Edit")
-        self._colors_edit_push_button.clicked.connect(self._edit_color)
-
-        self._colors_remove_push_button = QPushButton("Remove")
-        self._colors_remove_push_button.clicked.connect(self._remove_color)
-
-        colors_bottom_layout = QHBoxLayout()
-        colors_bottom_layout.addWidget(self._colors_add_push_button)
-        colors_bottom_layout.addWidget(self._colors_edit_push_button)
-        colors_bottom_layout.addWidget(self._colors_remove_push_button)
-
         downsampling_label = QLabel("Downsampling factor:")
 
         self._downsampling_spin_box = QSpinBox()
@@ -113,16 +96,33 @@ class ParameterGroupBox(QGroupBox):
         resampling_layout.addStretch(stretch=1)
         resampling_layout.addWidget(self._resampling_combo_box)
 
+        colors_label = QLabel("Colors:")
+        self._colors_list_widget = QListWidget()
+
+        self._colors_add_push_button = QPushButton("Add")
+        self._colors_add_push_button.clicked.connect(self._add_color)
+
+        self._colors_edit_push_button = QPushButton("Edit")
+        self._colors_edit_push_button.clicked.connect(self._edit_color)
+
+        self._colors_remove_push_button = QPushButton("Remove")
+        self._colors_remove_push_button.clicked.connect(self._remove_color)
+
+        colors_bottom_layout = QHBoxLayout()
+        colors_bottom_layout.addWidget(self._colors_add_push_button)
+        colors_bottom_layout.addWidget(self._colors_edit_push_button)
+        colors_bottom_layout.addWidget(self._colors_remove_push_button)
+
         convert_push_button = QPushButton("Convert Image")
         convert_push_button.clicked.connect(self._convert_image)
 
         layout = QVBoxLayout()
+        layout.addLayout(downsampling_layout)
+        layout.addLayout(resampling_layout)
+        layout.addStretch(stretch=1)
         layout.addWidget(colors_label)
         layout.addWidget(self._colors_list_widget)
         layout.addLayout(colors_bottom_layout)
-        layout.addStretch(stretch=1)
-        layout.addLayout(downsampling_layout)
-        layout.addLayout(resampling_layout)
         layout.addStretch(stretch=1)
         layout.addWidget(convert_push_button)
 
