@@ -49,5 +49,5 @@ Usage
 After [installing](#installation), activate the virtual environment if necessary (check
 installation step 5) and run the application with:
 ```sh
-    python gui_application.py
+    python pixelart_palette_converter.py
 ```
