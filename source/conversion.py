@@ -25,6 +25,8 @@ def convert_image(
     downsampling_factor: int | None = None,
     resampling_mode: Image.Resampling = Image.Resampling.NEAREST,
     grayscale: bool = False,
+    brightness_adjustment: float = 0,
+    contrast_adjustment: float = 0,
     colors: list[RGBColor] | None = None,
 ) -> Image.Image:
     if downsampling_factor is not None:
@@ -33,10 +35,40 @@ def convert_image(
     if grayscale:
         image = image.convert("L").convert("RGB")
 
+    if brightness_adjustment != 0 or contrast_adjustment != 0:
+        image = _adjust_brightness_and_contrast(
+            image, brightness_adjustment, contrast_adjustment
+        )
+
     if colors is not None:
         image = _recolor_image(image, colors)
 
     return image
+
+
+def _adjust_brightness_and_contrast(
+    image: Image.Image, brightness_adjustment: float, contrast_adjustment: float
+) -> Image.Image:
+    # Algorithm adapted from GIMP (GNU Image Manipulation Program):
+    # https://github.com/GNOME/gimp/blob/master/app/operations/gimpoperationbrightnesscontrast.c
+
+    image_array = np.asarray(image) / 255
+
+    if brightness_adjustment == 0:
+        pass
+    elif brightness_adjustment < 0:
+        image_array *= 1 + 0.5 * brightness_adjustment
+    else:
+        image_array = image_array + (1 - image_array) * 0.5 * brightness_adjustment
+
+    if contrast_adjustment != 0:
+        contrast_factor = np.tan(0.25 * (1 + contrast_adjustment) * np.pi)
+
+        image_array = (image_array - 0.5) * contrast_factor + 0.5
+
+    image_array = (image_array.clip(min=0, max=1) * 255).astype(np.uint8)
+
+    return Image.fromarray(image_array)
 
 
 def _downsample_image(

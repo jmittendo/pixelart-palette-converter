@@ -33,6 +33,7 @@ from PyQt6.QtWidgets import (
     QListWidgetItem,
     QPushButton,
     QSizePolicy,
+    QSlider,
     QSpinBox,
     QVBoxLayout,
     QWidget,
@@ -106,20 +107,98 @@ class DownsamplingGroupBox(QGroupBox):
         return self._resampling_combo_box.currentText()
 
 
+class ParameterSlider(QWidget):
+    def __init__(
+        self,
+        text: str,
+        min_value: int,
+        max_value: int,
+        min_slider_width: int | None = None,
+        min_spin_box_width: int | None = None,
+        orientation: Qt.Orientation = Qt.Orientation.Horizontal,
+        parent: QWidget | None = None,
+        flags: Qt.WindowType | None = None,
+    ) -> None:
+        if flags is None:
+            super().__init__(parent)
+        else:
+            super().__init__(parent, flags)
+
+        label = QLabel(text)
+
+        self._slider = QSlider(orientation)
+        self._slider.setMinimum(min_value)
+        self._slider.setMaximum(max_value)
+        self._slider.valueChanged.connect(
+            lambda: spin_box.setValue(self._slider.value())
+        )
+
+        if min_slider_width is not None:
+            self._slider.setMinimumWidth(min_slider_width)
+
+        spin_box = QSpinBox()
+        spin_box.setMinimum(min_value)
+        spin_box.setMaximum(max_value)
+        spin_box.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
+        spin_box.valueChanged.connect(lambda: self._slider.setValue(spin_box.value()))
+
+        if min_spin_box_width is not None:
+            spin_box.setMinimumWidth(min_spin_box_width)
+
+        match orientation:
+            case Qt.Orientation.Horizontal:
+                layout = QHBoxLayout()
+            case Qt.Orientation.Vertical:
+                layout = QVBoxLayout()
+            case _:
+                layout = QHBoxLayout()
+
+        layout.addWidget(label)
+
+        if orientation is Qt.Orientation.Horizontal:
+            layout.addStretch(1)
+
+        layout.addWidget(self._slider)
+        layout.addWidget(spin_box)
+
+        self.setLayout(layout)
+
+    @property
+    def value(self) -> int:
+        return self._slider.value()
+
+
 class PreprocessingGroupBox(QGroupBox):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__("Preprocessing", parent)
 
         self._grayscale_check_box = QCheckBox("Grayscale conversion")
 
+        self._brightness_slider = ParameterSlider(
+            "Brightness:", -100, 100, min_slider_width=128
+        )
+        self._contrast_slider = ParameterSlider(
+            "Contrast:", -100, 100, min_slider_width=128
+        )
+
         layout = QVBoxLayout()
         layout.addWidget(self._grayscale_check_box)
+        layout.addWidget(self._brightness_slider)
+        layout.addWidget(self._contrast_slider)
 
         self.setLayout(layout)
 
     @property
     def grayscale(self) -> bool:
         return self._grayscale_check_box.isChecked()
+
+    @property
+    def brightness(self) -> int:
+        return self._brightness_slider.value
+
+    @property
+    def contrast(self) -> int:
+        return self._contrast_slider.value
 
 
 class PaletteGroupBox(QGroupBox):
@@ -232,6 +311,8 @@ class ParameterGroupBox(QGroupBox):
         resampling_mode = Image.Resampling[resampling_mode_str.upper()]
 
         enable_grayscale = self._preprocessing_group_box.grayscale
+        brightness_adjustment = self._preprocessing_group_box.brightness / 100
+        contrast_adjustment = self._preprocessing_group_box.contrast / 100
 
         colors: list[RGBColor] | None = []
 
@@ -249,6 +330,8 @@ class ParameterGroupBox(QGroupBox):
             downsampling_factor=downsampling_factor,
             resampling_mode=resampling_mode,
             grayscale=enable_grayscale,
+            brightness_adjustment=brightness_adjustment,
+            contrast_adjustment=contrast_adjustment,
             colors=colors,
         )
         converted_qimage = QImage(
