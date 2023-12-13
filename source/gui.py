@@ -113,6 +113,7 @@ class ParameterSlider(QWidget):
         text: str,
         min_value: int,
         max_value: int,
+        tick_interval: int | None = None,
         min_slider_width: int | None = None,
         min_spin_box_width: int | None = None,
         orientation: Qt.Orientation = Qt.Orientation.Horizontal,
@@ -132,6 +133,10 @@ class ParameterSlider(QWidget):
         self._slider.valueChanged.connect(
             lambda: spin_box.setValue(self._slider.value())
         )
+
+        if tick_interval is not None:
+            self._slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+            self._slider.setTickInterval(tick_interval)
 
         if min_slider_width is not None:
             self._slider.setMinimumWidth(min_slider_width)
@@ -175,10 +180,10 @@ class PreprocessingGroupBox(QGroupBox):
         self._grayscale_check_box = QCheckBox("Grayscale conversion")
 
         self._brightness_slider = ParameterSlider(
-            "Brightness:", -100, 100, min_slider_width=128
+            "Brightness:", -100, 100, tick_interval=50, min_slider_width=128
         )
         self._contrast_slider = ParameterSlider(
-            "Contrast:", -100, 100, min_slider_width=128
+            "Contrast:", -100, 100, tick_interval=50, min_slider_width=128
         )
 
         layout = QVBoxLayout()
