@@ -205,9 +205,7 @@ class ParameterGroupBox(QGroupBox):
 
         layout = QVBoxLayout()
         layout.addWidget(self._downsampling_group_box)
-        layout.addStretch(stretch=1)
         layout.addWidget(self._preprocessing_group_box)
-        layout.addStretch(stretch=1)
         layout.addWidget(self._palette_group_box)
         layout.addStretch(stretch=1)
         layout.addWidget(convert_button)
