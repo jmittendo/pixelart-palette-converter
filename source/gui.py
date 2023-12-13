@@ -30,6 +30,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QListWidget,
+    QListWidgetItem,
     QPushButton,
     QSizePolicy,
     QSpinBox,
@@ -44,7 +45,7 @@ from source.typing import RGBColor
 class GUI(QWidget):
     def __init__(
         self, parent: QWidget | None = None, flags: Qt.WindowType | None = None
-    ):
+    ) -> None:
         if flags is None:
             super().__init__(parent)
         else:
@@ -64,29 +65,22 @@ class GUI(QWidget):
         self.setLayout(layout)
 
 
-class ParameterGroupBox(QGroupBox):
-    def __init__(
-        self,
-        input_image_label: "ImageLabel",
-        output_image_label: "ImageLabel",
-        parent: QWidget | None = None,
-    ) -> None:
-        super().__init__("Parameters", parent)
+class DownsamplingGroupBox(QGroupBox):
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__("Downsampling", parent)
 
-        self._input_image_label = input_image_label
-        self._output_image_label = output_image_label
+        factor_label = QLabel("Factor:")
 
-        downsampling_label = QLabel("Downsampling factor:")
+        self._factor_spin_box = QSpinBox()
+        self._factor_spin_box.setMinimum(1)
 
-        self._downsampling_spin_box = QSpinBox()
-        self._downsampling_spin_box.setMinimum(1)
-
-        downsampling_layout = QHBoxLayout()
-        downsampling_layout.addWidget(downsampling_label)
-        downsampling_layout.addStretch(stretch=1)
-        downsampling_layout.addWidget(self._downsampling_spin_box)
+        factor_layout = QHBoxLayout()
+        factor_layout.addWidget(factor_label)
+        factor_layout.addStretch(stretch=1)
+        factor_layout.addWidget(self._factor_spin_box)
 
         resampling_label = QLabel("Resampling mode:")
+
         self._resampling_combo_box = QComboBox()
 
         for resampling_mode in Image.Resampling.__members__:
@@ -97,54 +91,79 @@ class ParameterGroupBox(QGroupBox):
         resampling_layout.addStretch(stretch=1)
         resampling_layout.addWidget(self._resampling_combo_box)
 
-        self._grayscale_check_box = QCheckBox("Grayscale conversion")
-
-        colors_label = QLabel("Colors:")
-        self._colors_list_widget = QListWidget()
-
-        self._colors_add_push_button = QPushButton("Add")
-        self._colors_add_push_button.clicked.connect(self._add_color)
-
-        self._colors_edit_push_button = QPushButton("Edit")
-        self._colors_edit_push_button.clicked.connect(self._edit_color)
-
-        self._colors_remove_push_button = QPushButton("Remove")
-        self._colors_remove_push_button.clicked.connect(self._remove_color)
-
-        colors_bottom_layout = QHBoxLayout()
-        colors_bottom_layout.addWidget(self._colors_add_push_button)
-        colors_bottom_layout.addWidget(self._colors_edit_push_button)
-        colors_bottom_layout.addWidget(self._colors_remove_push_button)
-
-        convert_push_button = QPushButton("Convert Image")
-        convert_push_button.clicked.connect(self._convert_image)
-
         layout = QVBoxLayout()
-        layout.addLayout(downsampling_layout)
+        layout.addLayout(factor_layout)
         layout.addLayout(resampling_layout)
-        layout.addStretch(stretch=1)
-        layout.addWidget(self._grayscale_check_box)
-        layout.addStretch(stretch=1)
-        layout.addWidget(colors_label)
-        layout.addWidget(self._colors_list_widget)
-        layout.addLayout(colors_bottom_layout)
-        layout.addStretch(stretch=1)
-        layout.addWidget(convert_push_button)
 
         self.setLayout(layout)
-        self.setSizePolicy(
-            QSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
-        )
+
+    @property
+    def factor(self) -> int:
+        return self._factor_spin_box.value()
+
+    @property
+    def resampling_mode(self) -> str:
+        return self._resampling_combo_box.currentText()
+
+
+class PreprocessingGroupBox(QGroupBox):
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__("Preprocessing", parent)
+
+        self._grayscale_check_box = QCheckBox("Grayscale conversion")
+
+        layout = QVBoxLayout()
+        layout.addWidget(self._grayscale_check_box)
+
+        self.setLayout(layout)
+
+    @property
+    def grayscale(self) -> bool:
+        return self._grayscale_check_box.isChecked()
+
+
+class PaletteGroupBox(QGroupBox):
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__("Color Palette", parent)
+
+        self._palette_list_widget = QListWidget()
+
+        self._add_button = QPushButton("Add")
+        self._add_button.clicked.connect(self._add_color)
+
+        self._edit_button = QPushButton("Edit")
+        self._edit_button.clicked.connect(self._edit_color)
+
+        self._remove_button = QPushButton("Remove")
+        self._remove_button.clicked.connect(self._remove_color)
+
+        bottom_layout = QHBoxLayout()
+        bottom_layout.addWidget(self._add_button)
+        bottom_layout.addWidget(self._edit_button)
+        bottom_layout.addWidget(self._remove_button)
+
+        layout = QVBoxLayout()
+        layout.addWidget(self._palette_list_widget)
+        layout.addLayout(bottom_layout)
+
+        self.setLayout(layout)
+
+    @property
+    def num_colors(self) -> int:
+        return self._palette_list_widget.count()
+
+    def get_color_item(self, index: int) -> QListWidgetItem | None:
+        return self._palette_list_widget.item(index)
 
     def _add_color(self) -> None:
         qcolor = QColorDialog.getColor()
 
         if qcolor.isValid():
             color = qcolor.getRgb()[:3]
-            self._colors_list_widget.addItem(str(color))
+            self._palette_list_widget.addItem(str(color))
 
     def _edit_color(self) -> None:
-        selected_items = self._colors_list_widget.selectedItems()
+        selected_items = self._palette_list_widget.selectedItems()
 
         if not selected_items:
             return
@@ -161,8 +180,42 @@ class ParameterGroupBox(QGroupBox):
             selected_item.setText(str(new_color))
 
     def _remove_color(self) -> None:
-        current_row = self._colors_list_widget.currentRow()
-        self._colors_list_widget.takeItem(current_row)
+        current_row = self._palette_list_widget.currentRow()
+        self._palette_list_widget.takeItem(current_row)
+
+
+class ParameterGroupBox(QGroupBox):
+    def __init__(
+        self,
+        input_image_label: "ImageLabel",
+        output_image_label: "ImageLabel",
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__("Parameters", parent)
+
+        self._input_image_label = input_image_label
+        self._output_image_label = output_image_label
+
+        self._downsampling_group_box = DownsamplingGroupBox()
+        self._preprocessing_group_box = PreprocessingGroupBox()
+        self._palette_group_box = PaletteGroupBox()
+
+        convert_button = QPushButton("Convert Image")
+        convert_button.clicked.connect(self._convert_image)
+
+        layout = QVBoxLayout()
+        layout.addWidget(self._downsampling_group_box)
+        layout.addStretch(stretch=1)
+        layout.addWidget(self._preprocessing_group_box)
+        layout.addStretch(stretch=1)
+        layout.addWidget(self._palette_group_box)
+        layout.addStretch(stretch=1)
+        layout.addWidget(convert_button)
+
+        self.setLayout(layout)
+        self.setSizePolicy(
+            QSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
+        )
 
     def _convert_image(self) -> None:
         input_image_pixmap = self._input_image_label.default_pixmap
@@ -172,23 +225,23 @@ class ParameterGroupBox(QGroupBox):
 
         input_image = ImageQt.fromqpixmap(input_image_pixmap)
 
-        downsampling_factor = self._downsampling_spin_box.value()
+        downsampling_factor = self._downsampling_group_box.factor
 
         if downsampling_factor == 1:
             downsampling_factor = None
 
-        resampling_mode_str = self._resampling_combo_box.currentText()
+        resampling_mode_str = self._downsampling_group_box.resampling_mode
         resampling_mode = Image.Resampling[resampling_mode_str.upper()]
 
-        enable_grayscale = self._grayscale_check_box.isChecked()
+        enable_grayscale = self._preprocessing_group_box.grayscale
 
         colors: list[RGBColor] | None = []
 
-        for item_index in range(self._colors_list_widget.count()):
-            item = self._colors_list_widget.item(item_index)
+        for color_index in range(self._palette_group_box.num_colors):
+            color_item = self._palette_group_box.get_color_item(color_index)
 
-            if item is not None:
-                colors.append(ast.literal_eval(item.text()))
+            if color_item is not None:
+                colors.append(ast.literal_eval(color_item.text()))
 
         if not colors:
             colors = None
@@ -270,12 +323,12 @@ class _ImageGroupBox(QGroupBox):
 
         self.image_label = ImageLabel(transform_mode=transform_mode)
 
-        self._push_button = QPushButton(button_text)
-        self._push_button.clicked.connect(self._button_action)
+        self._button = QPushButton(button_text)
+        self._button.clicked.connect(self._button_action)
 
         layout = QVBoxLayout()
         layout.addWidget(self.image_label)
-        layout.addWidget(self._push_button)
+        layout.addWidget(self._button)
 
         self.setLayout(layout)
 
