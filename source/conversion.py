@@ -46,6 +46,20 @@ def convert_image(
     return image
 
 
+def _downsample_image(
+    image: Image.Image, factor: int, resampling_mode: Image.Resampling
+) -> Image.Image:
+    if factor < 1:
+        raise ValueError("Downsampling factor must not be smaller than 1")
+
+    img_width, img_height = image.size
+
+    new_width = img_width // factor
+    new_height = img_height // factor
+
+    return image.resize((new_width, new_height), resample=resampling_mode)
+
+
 def _adjust_brightness_and_contrast(
     image: Image.Image, brightness_adjustment: float, contrast_adjustment: float
 ) -> Image.Image:
@@ -63,26 +77,11 @@ def _adjust_brightness_and_contrast(
 
     if contrast_adjustment != 0:
         contrast_factor = np.tan(0.25 * (1 + contrast_adjustment) * np.pi)
-
         image_array = (image_array - 0.5) * contrast_factor + 0.5
 
     image_array = (image_array.clip(min=0, max=1) * 255).astype(np.uint8)
 
     return Image.fromarray(image_array)
-
-
-def _downsample_image(
-    image: Image.Image, factor: int, resampling_mode: Image.Resampling
-) -> Image.Image:
-    if factor < 1:
-        raise ValueError("Downsampling factor must not be smaller than 1")
-
-    img_width, img_height = image.size
-
-    new_width = img_width // factor
-    new_height = img_height // factor
-
-    return image.resize((new_width, new_height), resample=resampling_mode)
 
 
 def _recolor_image(image: Image.Image, colors: list[RGBColor]) -> Image.Image:
