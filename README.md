@@ -1,4 +1,5 @@
 ![Pixel Art Palette Converter](docs/readme-header.png)
+======================================================
 
 **pixelart-palette-converter** is a simple Python GUI application for converting
 images into [pixel art](https://en.wikipedia.org/wiki/Pixel_art) style with a fixed
