@@ -20,6 +20,7 @@ from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QApplication, QMainWindow
 
 from source.gui import GUI
+from source.style import AppFont, AppPalette, AppStyle
 
 WINDOW_TITLE = "Pixel Art Palette Converter"
 ICON_PATH = "resources/icon.png"
@@ -28,6 +29,10 @@ MINIMUM_WINDOW_SIZE = (1280, 540)
 
 def main() -> None:
     app = QApplication(sys.argv)
+    app.setFont(AppFont())
+    app.setPalette(AppPalette())
+    app.setStyle(AppStyle())
+
     gui = GUI()
 
     window = QMainWindow()
