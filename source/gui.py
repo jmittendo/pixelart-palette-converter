@@ -427,12 +427,14 @@ class ImageLabelStack(QStackedWidget):
 
         self.setAcceptDrops(True)
 
+    @override
     def dragEnterEvent(self, event: QDragEnterEvent) -> None:
         mime_data = event.mimeData()
 
         if mime_data is not None and mime_data.hasUrls():
             event.acceptProposedAction()
 
+    @override
     def dropEvent(self, event: QDropEvent) -> None:
         mime_data = event.mimeData()
 
