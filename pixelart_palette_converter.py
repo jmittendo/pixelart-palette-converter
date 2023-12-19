@@ -23,7 +23,7 @@ from source.gui import GUI
 
 WINDOW_TITLE = "Pixel Art Palette Converter"
 ICON_PATH = "resources/icon.png"
-MINIMUM_WINDOW_SIZE = (1280, 540)
+MINIMUM_WINDOW_SIZE = (960, 540)
 
 
 def main() -> None:
