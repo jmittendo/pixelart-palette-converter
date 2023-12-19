@@ -14,7 +14,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import ast
 from typing import override
 
 from PIL import Image, ImageQt
@@ -27,8 +26,11 @@ from PyQt6.QtGui import (
     QIcon,
     QImage,
     QKeySequence,
+    QPainter,
     QPixmap,
     QResizeEvent,
+    QStandardItem,
+    QStandardItemModel,
 )
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -38,8 +40,7 @@ from PyQt6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
-    QListWidget,
-    QListWidgetItem,
+    QListView,
     QMainWindow,
     QPushButton,
     QSizePolicy,
@@ -272,11 +273,47 @@ class PreprocessingGroupBox(QGroupBox):
         return self._contrast_slider.value
 
 
+class ColorItem(QStandardItem):
+    def __init__(self, color: RGBColor):
+        super().__init__()
+
+        self.set_color(color)
+        self.setEditable(False)
+
+    @property
+    def color(self) -> RGBColor:
+        return self.data()
+
+    def set_color(self, color: RGBColor) -> None:
+        self._update(color)
+
+    def _update(self, color: RGBColor) -> None:
+        self.setData(color)
+        self.setIcon(self._get_icon(color))
+
+        hex_text = "#" + "".join(f"{value:02x}" for value in color)
+        self.setText(f"{hex_text} {str(color)}")
+
+    def _get_icon(self, color: RGBColor) -> QIcon:
+        pixmap = QPixmap(16, 16)
+
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setBrush(QColor(*color))
+        painter.drawRect(pixmap.rect())
+        painter.end()
+
+        return QIcon(pixmap)
+
+
 class PaletteGroupBox(QGroupBox):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__("Color Palette", parent)
 
-        self._palette_list_widget = QListWidget()
+        self._color_items_model = QStandardItemModel()
+
+        self._color_items_view = QListView()
+        self._color_items_view.setModel(self._color_items_model)
 
         self._add_button = QPushButton("Add")
         self._add_button.clicked.connect(self._add_color)
@@ -293,45 +330,62 @@ class PaletteGroupBox(QGroupBox):
         bottom_layout.addWidget(self._remove_button)
 
         layout = QVBoxLayout()
-        layout.addWidget(self._palette_list_widget)
+        layout.addWidget(self._color_items_view)
         layout.addLayout(bottom_layout)
 
         self.setLayout(layout)
 
     @property
-    def num_colors(self) -> int:
-        return self._palette_list_widget.count()
+    def colors(self) -> list[RGBColor]:
+        colors: list[RGBColor] = []
 
-    def get_color_item(self, index: int) -> QListWidgetItem | None:
-        return self._palette_list_widget.item(index)
+        for index in range(self._color_items_model.rowCount()):
+            color_item = self._color_items_model.item(index)
+
+            if color_item is not None:
+                colors.append(color_item.data())
+
+        return colors
 
     def _add_color(self) -> None:
         qcolor = QColorDialog.getColor()
 
         if qcolor.isValid():
             color = qcolor.getRgb()[:3]
-            self._palette_list_widget.addItem(str(color))
+            color_item = ColorItem(color)  # type: ignore
+
+            self._color_items_model.appendRow(color_item)
 
     def _edit_color(self) -> None:
-        selected_items = self._palette_list_widget.selectedItems()
+        color_items = self._get_selected_color_items()
 
-        if not selected_items:
-            return
+        for color_item in color_items:
+            current_color = color_item.color
+            current_qcolor = QColor(*current_color)
+            new_qcolor = QColorDialog.getColor(initial=current_qcolor)
 
-        selected_item = selected_items[0]
-
-        current_color = ast.literal_eval(selected_item.text())
-        current_qcolor = QColor(*current_color)
-
-        new_qcolor = QColorDialog.getColor(initial=current_qcolor)
-
-        if new_qcolor.isValid():
-            new_color = new_qcolor.getRgb()[:3]
-            selected_item.setText(str(new_color))
+            if new_qcolor.isValid():
+                new_color = new_qcolor.getRgb()[:3]
+                color_item.set_color(new_color)  # type: ignore
 
     def _remove_color(self) -> None:
-        current_row = self._palette_list_widget.currentRow()
-        self._palette_list_widget.takeItem(current_row)
+        color_items = self._get_selected_color_items()
+
+        for color_item in color_items:
+            self._color_items_model.takeRow(color_item.row())
+
+    def _get_selected_color_items(self) -> list[ColorItem]:
+        selected_indices = self._color_items_view.selectedIndexes()
+
+        selected_items: list[ColorItem] = []
+
+        for index in selected_indices:
+            color_item: ColorItem = self._color_items_model.itemFromIndex(index)  # type: ignore
+
+            if color_item is not None:
+                selected_items.append(color_item)
+
+        return selected_items
 
 
 class ParameterGroupBox(QGroupBox):
@@ -383,16 +437,7 @@ class ParameterGroupBox(QGroupBox):
         brightness_adjustment = self._preprocessing_group_box.brightness / 100
         contrast_adjustment = self._preprocessing_group_box.contrast / 100
 
-        colors: list[RGBColor] | None = []
-
-        for color_index in range(self._palette_group_box.num_colors):
-            color_item = self._palette_group_box.get_color_item(color_index)
-
-            if color_item is not None:
-                colors.append(ast.literal_eval(color_item.text()))
-
-        if not colors:
-            colors = None
+        colors = self._palette_group_box.colors
 
         converted_image = convert_image(
             input_image,
