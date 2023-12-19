@@ -15,7 +15,6 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import ast
-from abc import abstractmethod
 from typing import override
 
 from PIL import Image, ImageQt
@@ -35,12 +34,15 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
     QSlider,
     QSpinBox,
+    QStackedLayout,
     QVBoxLayout,
     QWidget,
 )
 
 from source.conversion import convert_image
 from source.typing import RGBColor
+
+PIXEL_PRESCALE_FACTOR_BASE = 4096
 
 
 class GUI(QWidget):
@@ -52,16 +54,12 @@ class GUI(QWidget):
         else:
             super().__init__(parent, flags)
 
-        input_image_group_box = InputImageGroupBox()
-        output_image_group_box = OutputImageGroupBox()
-        parameter_group_box = ParameterGroupBox(
-            input_image_group_box.image_label, output_image_group_box.image_label
-        )
+        image_group_box = ImageGroupBox()
+        parameter_group_box = ParameterGroupBox(image_group_box)
 
         layout = QHBoxLayout()
         layout.addWidget(parameter_group_box, stretch=1)
-        layout.addWidget(input_image_group_box, stretch=1)
-        layout.addWidget(output_image_group_box, stretch=1)
+        layout.addWidget(image_group_box, stretch=1)
 
         self.setLayout(layout)
 
@@ -271,20 +269,18 @@ class PaletteGroupBox(QGroupBox):
 class ParameterGroupBox(QGroupBox):
     def __init__(
         self,
-        input_image_label: "ImageLabel",
-        output_image_label: "ImageLabel",
+        image_group_box: "ImageGroupBox",
         parent: QWidget | None = None,
     ) -> None:
         super().__init__("Parameters", parent)
 
-        self._input_image_label = input_image_label
-        self._output_image_label = output_image_label
+        self._image_group_box = image_group_box
 
         self._downsampling_group_box = DownsamplingGroupBox()
         self._preprocessing_group_box = PreprocessingGroupBox()
         self._palette_group_box = PaletteGroupBox()
 
-        convert_button = QPushButton("Convert Image")
+        convert_button = QPushButton("Convert image")
         convert_button.clicked.connect(self._convert_image)
 
         layout = QVBoxLayout()
@@ -300,12 +296,12 @@ class ParameterGroupBox(QGroupBox):
         )
 
     def _convert_image(self) -> None:
-        input_image_pixmap = self._input_image_label.default_pixmap
+        input_pixmap = self._image_group_box.input_pixmap
 
-        if input_image_pixmap is None:
+        if input_pixmap is None:
             return
 
-        input_image = ImageQt.fromqpixmap(input_image_pixmap)
+        input_image = ImageQt.fromqpixmap(input_pixmap)
 
         downsampling_factor = self._downsampling_group_box.factor
 
@@ -348,15 +344,15 @@ class ParameterGroupBox(QGroupBox):
         )
         converted_image_pixmap = QPixmap(converted_qimage)
 
-        self._output_image_label.setPixmap(converted_image_pixmap)
+        self._image_group_box.set_output_pixmap(converted_image_pixmap)
+        self._image_group_box.display_output_image()
 
 
 class ImageLabel(QLabel):
     def __init__(
         self,
-        transform_mode: Qt.TransformationMode = (
-            Qt.TransformationMode.SmoothTransformation
-        ),
+        pixmap: QPixmap | None = None,
+        pixel_mode: bool = False,
         parent: QWidget | None = None,
         flags: Qt.WindowType | None = None,
     ) -> None:
@@ -365,8 +361,8 @@ class ImageLabel(QLabel):
         else:
             super().__init__(None, parent, flags)
 
-        self.default_pixmap: QPixmap | None = None
-        self._transform_mode = transform_mode
+        self.true_pixmap = pixmap
+        self._pixel_mode = pixel_mode
 
         self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -374,83 +370,115 @@ class ImageLabel(QLabel):
 
     @override
     def resizeEvent(self, event: QResizeEvent) -> None:
-        if self.default_pixmap is not None:
-            self.setPixmap(self.default_pixmap)
-
-        super().resizeEvent(event)
+        self._set_resized_pixmap()
 
     @override
     def setPixmap(self, pixmap: QPixmap) -> None:
-        self.default_pixmap = pixmap
+        self.true_pixmap = pixmap
         self._set_resized_pixmap()
 
+    def remove_pixmap(self):
+        self.true_pixmap = None
+        self.clear()
+
     def _set_resized_pixmap(self) -> None:
-        if self.default_pixmap is not None:
-            scaled_pixmap = self.default_pixmap.scaled(
+        if self.true_pixmap is not None:
+            if self._pixel_mode:
+                true_width = self.true_pixmap.height()
+                true_height = self.true_pixmap.width()
+
+                prescale_factor = max(
+                    1, PIXEL_PRESCALE_FACTOR_BASE // min(true_width, true_height)
+                )
+
+                prescaled_pixmap = self.true_pixmap.scaled(
+                    self.true_pixmap.size() * prescale_factor,
+                    transformMode=Qt.TransformationMode.FastTransformation,
+                )
+            else:
+                prescaled_pixmap = self.true_pixmap
+
+            scaled_pixmap = prescaled_pixmap.scaled(
                 self.size(),
                 aspectRatioMode=Qt.AspectRatioMode.KeepAspectRatio,
-                transformMode=self._transform_mode,
+                transformMode=Qt.TransformationMode.SmoothTransformation,
             )
 
             super().setPixmap(scaled_pixmap)
 
 
-class _ImageGroupBox(QGroupBox):
-    def __init__(
-        self,
-        title: str,
-        button_text: str,
-        transform_mode: Qt.TransformationMode = (
-            Qt.TransformationMode.SmoothTransformation
-        ),
-        parent: QWidget | None = None,
-    ) -> None:
-        super().__init__(title, parent)
+class ImageGroupBox(QGroupBox):
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__("Image (Empty)", parent)
 
-        self.image_label = ImageLabel(transform_mode=transform_mode)
+        self._input_image_label = ImageLabel()
+        self._output_image_label = ImageLabel(pixel_mode=True)
 
-        self._button = QPushButton(button_text)
-        self._button.clicked.connect(self._button_action)
+        self._image_label_stack = QStackedLayout()
+        self._image_label_stack.addWidget(self._input_image_label)
+        self._image_label_stack.addWidget(self._output_image_label)
+
+        select_button = QPushButton("Select image...")
+        select_button.clicked.connect(self._select_image)
+
+        self._save_button = QPushButton("Save converted image...")
+        self._save_button.clicked.connect(self._save_output)
+
+        self._display_original_button = QPushButton("Display original")
+        self._display_original_button.setCheckable(True)
+        self._display_original_button.toggled.connect(self._on_display_toggle)
+
+        buttons_layout = QHBoxLayout()
+        buttons_layout.addWidget(select_button, stretch=1)
+        buttons_layout.addWidget(self._save_button, stretch=1)
+        buttons_layout.addWidget(
+            self._display_original_button, alignment=Qt.AlignmentFlag.AlignTrailing
+        )
 
         layout = QVBoxLayout()
-        layout.addWidget(self.image_label)
-        layout.addWidget(self._button)
+        layout.addLayout(self._image_label_stack)
+        layout.addLayout(buttons_layout)
 
         self.setLayout(layout)
 
-    @abstractmethod
-    def _button_action(self):
-        raise NotImplementedError()
+    @property
+    def input_pixmap(self) -> QPixmap | None:
+        return self._input_image_label.true_pixmap
 
+    def set_output_pixmap(self, pixmap: QPixmap) -> None:
+        self._output_image_label.setPixmap(pixmap)
 
-class InputImageGroupBox(_ImageGroupBox):
-    def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__("Original Image", "Select Image...", parent=parent)
+    def display_output_image(self) -> None:
+        self._image_label_stack.setCurrentWidget(self._output_image_label)
+        self.setTitle("Converted Image")
+        self._display_original_button.setChecked(False)
 
-    @override
-    def _button_action(self) -> None:
+    def _on_display_toggle(self, checked: bool) -> None:
+        if checked:
+            if self._input_image_label.true_pixmap is not None:
+                self._display_input_image()
+        else:
+            if self._output_image_label.true_pixmap is not None:
+                self.display_output_image()
+
+    def _display_input_image(self) -> None:
+        self._image_label_stack.setCurrentWidget(self._input_image_label)
+        self.setTitle("Original Image")
+
+    def _select_image(self) -> None:
         file_path = QFileDialog.getOpenFileName()[0]
 
         if file_path == "":
             return
 
-        self.image_label.setPixmap(QPixmap(file_path))
+        self._input_image_label.setPixmap(QPixmap(file_path))
+        self._output_image_label.remove_pixmap()
+        self._display_input_image()
 
+    def _save_output(self) -> None:
+        output_pixmap = self._output_image_label.true_pixmap
 
-class OutputImageGroupBox(_ImageGroupBox):
-    def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(
-            "Converted Image",
-            "Save Converted Image...",
-            transform_mode=Qt.TransformationMode.FastTransformation,
-            parent=parent,
-        )
-
-    @override
-    def _button_action(self) -> None:
-        converted_image_pixmap = self.image_label.default_pixmap
-
-        if converted_image_pixmap is None:
+        if output_pixmap is None:
             return
 
         file_path = QFileDialog.getSaveFileName(filter="Images (*.png *.jpg)")[0]
@@ -458,5 +486,5 @@ class OutputImageGroupBox(_ImageGroupBox):
         if file_path == "":
             return
 
-        converted_image = ImageQt.fromqpixmap(converted_image_pixmap)
-        converted_image.save(file_path)
+        output_image = ImageQt.fromqpixmap(output_pixmap)
+        output_image.save(file_path)
