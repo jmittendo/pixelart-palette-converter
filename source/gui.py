@@ -20,10 +20,13 @@ from typing import override
 from PIL import Image, ImageQt
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import (
+    QAction,
     QColor,
     QDragEnterEvent,
     QDropEvent,
+    QIcon,
     QImage,
+    QKeySequence,
     QPixmap,
     QResizeEvent,
 )
@@ -37,6 +40,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QListWidget,
     QListWidgetItem,
+    QMainWindow,
     QPushButton,
     QSizePolicy,
     QSlider,
@@ -52,6 +56,54 @@ from source.typing import RGBColor
 PIXEL_PRESCALE_FACTOR_BASE = 4096
 
 
+class MainWindow(QMainWindow):
+    def __init__(
+        self,
+        title: str,
+        icon: QIcon,
+        min_size: tuple[int, int],
+        parent: QWidget | None = None,
+        flags: Qt.WindowType | None = None,
+    ):
+        if flags is None:
+            super().__init__(parent)
+        else:
+            super().__init__(parent, flags)
+
+        gui = GUI()
+
+        open_action = QAction("Open image...", self)
+        open_action.setShortcut(QKeySequence.StandardKey.Open)
+        open_action.triggered.connect(gui.open_image)
+
+        save_action = QAction("Save converted image", self)
+        save_action.setShortcut(QKeySequence.StandardKey.Save)
+        save_action.triggered.connect(gui.save_image)
+
+        save_as_action = QAction("Save converted image as...", self)
+        save_as_action.setShortcut(QKeySequence("Ctrl+Shift+S"))
+        save_as_action.triggered.connect(gui.save_image_as)
+
+        exit_action = QAction("Close", self)
+        exit_action.triggered.connect(self.close)
+
+        menu_bar = self.menuBar()
+
+        if menu_bar is not None:
+            file_menu = menu_bar.addMenu("File")
+
+            if file_menu is not None:
+                file_menu.addAction(open_action)
+                file_menu.addAction(save_action)
+                file_menu.addAction(save_as_action)
+                file_menu.addAction(exit_action)
+
+        self.setWindowTitle(title)
+        self.setWindowIcon(icon)
+        self.setMinimumSize(*min_size)
+        self.setCentralWidget(gui)
+
+
 class GUI(QWidget):
     def __init__(
         self, parent: QWidget | None = None, flags: Qt.WindowType | None = None
@@ -61,14 +113,23 @@ class GUI(QWidget):
         else:
             super().__init__(parent, flags)
 
-        image_group_box = ImageGroupBox()
-        parameter_group_box = ParameterGroupBox(image_group_box)
+        self._image_group_box = ImageGroupBox()
+        parameter_group_box = ParameterGroupBox(self._image_group_box)
 
         layout = QHBoxLayout()
         layout.addWidget(parameter_group_box, stretch=1)
-        layout.addWidget(image_group_box, stretch=1)
+        layout.addWidget(self._image_group_box, stretch=1)
 
         self.setLayout(layout)
+
+    def open_image(self) -> None:
+        self._image_group_box.open_image()
+
+    def save_image(self) -> None:
+        self._image_group_box.save_output()
+
+    def save_image_as(self) -> None:
+        self._image_group_box.save_output_as()
 
 
 class DownsamplingGroupBox(QGroupBox):
@@ -458,6 +519,8 @@ class ImageGroupBox(QGroupBox):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__("Image (Empty)", parent)
 
+        self._output_file_path: str | None = None
+
         self._input_image_label = ImageLabel()
         self._output_image_label = ImageLabel(pixel_mode=True)
 
@@ -466,26 +529,15 @@ class ImageGroupBox(QGroupBox):
         self._image_label_stack.add_image_label(self._output_image_label)
         self._image_label_stack.image_dropped.connect(self._load_image)
 
-        select_button = QPushButton("Select image...")
-        select_button.clicked.connect(self._select_image)
-
-        self._save_button = QPushButton("Save converted image...")
-        self._save_button.clicked.connect(self._save_output)
-
         self._show_original_button = QPushButton("Show original")
         self._show_original_button.setCheckable(True)
         self._show_original_button.toggled.connect(self._on_display_toggle)
 
-        buttons_layout = QHBoxLayout()
-        buttons_layout.addWidget(select_button, stretch=1)
-        buttons_layout.addWidget(self._save_button, stretch=1)
-        buttons_layout.addWidget(
-            self._show_original_button, alignment=Qt.AlignmentFlag.AlignTrailing
-        )
-
         layout = QVBoxLayout()
         layout.addWidget(self._image_label_stack)
-        layout.addLayout(buttons_layout)
+        layout.addWidget(
+            self._show_original_button, alignment=Qt.AlignmentFlag.AlignRight
+        )
 
         self.setLayout(layout)
 
@@ -501,6 +553,43 @@ class ImageGroupBox(QGroupBox):
         self.setTitle("Converted Image")
         self._show_original_button.setChecked(False)
 
+    def open_image(self) -> None:
+        file_path = QFileDialog.getOpenFileName()[0]
+
+        if file_path == "":
+            return
+
+        self._load_image(file_path)
+
+    def save_output(self) -> None:
+        if self._output_file_path is None:
+            self.save_output_as()
+        else:
+            output_pixmap = self._output_image_label.true_pixmap
+
+            if output_pixmap is None:
+                return
+
+            self._save_output_pixmap(output_pixmap, self._output_file_path)
+
+    def save_output_as(self) -> None:
+        output_pixmap = self._output_image_label.true_pixmap
+
+        if output_pixmap is None:
+            return
+
+        file_path = QFileDialog.getSaveFileName(filter="Images (*.png *.jpg)")[0]
+
+        if file_path == "":
+            return
+
+        self._save_output_pixmap(output_pixmap, file_path)
+        self._output_file_path = file_path
+
+    def _save_output_pixmap(self, output_pixmap: QPixmap, file_path: str) -> None:
+        output_image = ImageQt.fromqpixmap(output_pixmap)
+        output_image.save(file_path)
+
     def _on_display_toggle(self, checked: bool) -> None:
         if checked:
             if self._input_image_label.true_pixmap is not None:
@@ -513,29 +602,8 @@ class ImageGroupBox(QGroupBox):
         self._image_label_stack.setCurrentWidget(self._input_image_label)
         self.setTitle("Original Image")
 
-    def _select_image(self) -> None:
-        file_path = QFileDialog.getOpenFileName()[0]
-
-        if file_path == "":
-            return
-
-        self._load_image(file_path)
-
     def _load_image(self, file_path: str) -> None:
         self._input_image_label.setPixmap(QPixmap(file_path))
         self._output_image_label.remove_pixmap()
         self._display_input_image()
-
-    def _save_output(self) -> None:
-        output_pixmap = self._output_image_label.true_pixmap
-
-        if output_pixmap is None:
-            return
-
-        file_path = QFileDialog.getSaveFileName(filter="Images (*.png *.jpg)")[0]
-
-        if file_path == "":
-            return
-
-        output_image = ImageQt.fromqpixmap(output_pixmap)
-        output_image.save(file_path)
+        self._output_file_path = None
