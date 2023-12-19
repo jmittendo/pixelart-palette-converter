@@ -65,7 +65,7 @@ class MainWindow(QMainWindow):
         min_size: tuple[int, int],
         parent: QWidget | None = None,
         flags: Qt.WindowType | None = None,
-    ):
+    ) -> None:
         if flags is None:
             super().__init__(parent)
         else:
@@ -274,7 +274,7 @@ class PreprocessingGroupBox(QGroupBox):
 
 
 class ColorItem(QStandardItem):
-    def __init__(self, color: RGBColor):
+    def __init__(self, color: RGBColor) -> None:
         super().__init__()
 
         self.set_color(color)
@@ -490,7 +490,7 @@ class ImageLabel(QLabel):
         self.true_pixmap = pixmap
         self._set_resized_pixmap()
 
-    def remove_pixmap(self):
+    def remove_pixmap(self) -> None:
         self.true_pixmap = None
         self.clear()
 
