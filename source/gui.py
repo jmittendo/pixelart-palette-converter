@@ -18,8 +18,15 @@ import ast
 from typing import override
 
 from PIL import Image, ImageQt
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor, QImage, QPixmap, QResizeEvent
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import (
+    QColor,
+    QDragEnterEvent,
+    QDropEvent,
+    QImage,
+    QPixmap,
+    QResizeEvent,
+)
 from PyQt6.QtWidgets import (
     QCheckBox,
     QColorDialog,
@@ -34,7 +41,7 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
     QSlider,
     QSpinBox,
-    QStackedLayout,
+    QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -407,6 +414,44 @@ class ImageLabel(QLabel):
             super().setPixmap(scaled_pixmap)
 
 
+class ImageLabelStack(QStackedWidget):
+    image_dropped = pyqtSignal(str)
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+
+        empty_label = QLabel("Drag and drop image here...")
+        empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        super().addWidget(empty_label)
+
+        self.setAcceptDrops(True)
+
+    def dragEnterEvent(self, event: QDragEnterEvent) -> None:
+        mime_data = event.mimeData()
+
+        if mime_data is not None and mime_data.hasUrls():
+            event.acceptProposedAction()
+
+    def dropEvent(self, event: QDropEvent) -> None:
+        mime_data = event.mimeData()
+
+        if mime_data is not None:
+            file_path = mime_data.urls()[0].toLocalFile()
+
+            self.image_dropped.emit(file_path)
+
+    @override
+    def addWidget(self, widget: QWidget | None = None) -> int:
+        if not isinstance(widget, ImageLabel):
+            raise TypeError("Can only add widgets of type ImageLabel")
+
+        return self.add_image_label(widget)
+
+    def add_image_label(self, image_label: ImageLabel) -> int:
+        return super().addWidget(image_label)
+
+
 class ImageGroupBox(QGroupBox):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__("Image (Empty)", parent)
@@ -414,9 +459,10 @@ class ImageGroupBox(QGroupBox):
         self._input_image_label = ImageLabel()
         self._output_image_label = ImageLabel(pixel_mode=True)
 
-        self._image_label_stack = QStackedLayout()
-        self._image_label_stack.addWidget(self._input_image_label)
-        self._image_label_stack.addWidget(self._output_image_label)
+        self._image_label_stack = ImageLabelStack()
+        self._image_label_stack.add_image_label(self._input_image_label)
+        self._image_label_stack.add_image_label(self._output_image_label)
+        self._image_label_stack.image_dropped.connect(self._load_image)
 
         select_button = QPushButton("Select image...")
         select_button.clicked.connect(self._select_image)
@@ -436,7 +482,7 @@ class ImageGroupBox(QGroupBox):
         )
 
         layout = QVBoxLayout()
-        layout.addLayout(self._image_label_stack)
+        layout.addWidget(self._image_label_stack)
         layout.addLayout(buttons_layout)
 
         self.setLayout(layout)
@@ -471,6 +517,9 @@ class ImageGroupBox(QGroupBox):
         if file_path == "":
             return
 
+        self._load_image(file_path)
+
+    def _load_image(self, file_path: str) -> None:
         self._input_image_label.setPixmap(QPixmap(file_path))
         self._output_image_label.remove_pixmap()
         self._display_input_image()
