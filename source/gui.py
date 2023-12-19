@@ -472,15 +472,15 @@ class ImageGroupBox(QGroupBox):
         self._save_button = QPushButton("Save converted image...")
         self._save_button.clicked.connect(self._save_output)
 
-        self._display_original_button = QPushButton("Display original")
-        self._display_original_button.setCheckable(True)
-        self._display_original_button.toggled.connect(self._on_display_toggle)
+        self._show_original_button = QPushButton("Show original")
+        self._show_original_button.setCheckable(True)
+        self._show_original_button.toggled.connect(self._on_display_toggle)
 
         buttons_layout = QHBoxLayout()
         buttons_layout.addWidget(select_button, stretch=1)
         buttons_layout.addWidget(self._save_button, stretch=1)
         buttons_layout.addWidget(
-            self._display_original_button, alignment=Qt.AlignmentFlag.AlignTrailing
+            self._show_original_button, alignment=Qt.AlignmentFlag.AlignTrailing
         )
 
         layout = QVBoxLayout()
@@ -499,7 +499,7 @@ class ImageGroupBox(QGroupBox):
     def display_output_image(self) -> None:
         self._image_label_stack.setCurrentWidget(self._output_image_label)
         self.setTitle("Converted Image")
-        self._display_original_button.setChecked(False)
+        self._show_original_button.setChecked(False)
 
     def _on_display_toggle(self, checked: bool) -> None:
         if checked:
