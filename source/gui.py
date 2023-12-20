@@ -14,9 +14,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import json
 from typing import override
 
-from PIL import Image, ImageQt
+from PIL import Image, ImageColor, ImageQt
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import (
     QAction,
@@ -55,6 +56,7 @@ from source.conversion import convert_image
 from source.typing import RGBColor
 
 PIXEL_PRESCALE_FACTOR_BASE = 4096
+PALETTES_JSON_PATH = "resources/palettes-c16-n1024.json"
 
 
 class MainWindow(QMainWindow):
@@ -310,6 +312,29 @@ class PaletteGroupBox(QGroupBox):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__("Color Palette", parent)
 
+        self._palettes_combo_box = QComboBox()
+        self._palettes_combo_box.setSizePolicy(
+            QSizePolicy.Policy.Ignored,
+            self._palettes_combo_box.sizePolicy().verticalPolicy(),
+        )
+        self._palettes_combo_box.addItem("(Empty Palette)", userData=[])
+
+        with open(PALETTES_JSON_PATH) as json_file:
+            palettes = json.load(json_file)
+
+        for palette in palettes.values():
+            palette_text = palette["name"]
+            author = palette["author"]
+
+            if author is not None:
+                palette_text += f" ({author})"
+
+            colors = [ImageColor.getrgb(hex_color) for hex_color in palette["colors"]]
+
+            self._palettes_combo_box.addItem(palette_text, userData=colors)
+
+        self._palettes_combo_box.currentIndexChanged.connect(self._load_palette)
+
         self._color_items_model = QStandardItemModel()
 
         self._color_items_view = QListView()
@@ -330,6 +355,7 @@ class PaletteGroupBox(QGroupBox):
         bottom_layout.addWidget(self._remove_button)
 
         layout = QVBoxLayout()
+        layout.addWidget(self._palettes_combo_box)
         layout.addWidget(self._color_items_view)
         layout.addLayout(bottom_layout)
 
@@ -346,6 +372,16 @@ class PaletteGroupBox(QGroupBox):
                 colors.append(color_item.data())
 
         return colors
+
+    def _load_palette(self) -> None:
+        self._color_items_model.clear()
+
+        colors = self._palettes_combo_box.currentData()
+
+        for color in colors:
+            color_item = ColorItem(color)
+
+            self._color_items_model.appendRow(color_item)
 
     def _add_color(self) -> None:
         qcolor = QColorDialog.getColor()
