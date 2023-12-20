@@ -437,7 +437,10 @@ class ParameterGroupBox(QGroupBox):
         brightness_adjustment = self._preprocessing_group_box.brightness / 100
         contrast_adjustment = self._preprocessing_group_box.contrast / 100
 
-        colors = self._palette_group_box.colors
+        colors: list[RGBColor] | None = self._palette_group_box.colors
+
+        if not colors:
+            colors = None
 
         converted_image = convert_image(
             input_image,
