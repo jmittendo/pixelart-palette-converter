@@ -56,7 +56,7 @@ from source.conversion import convert_image
 from source.typing import RGBColor
 
 PIXEL_PRESCALE_FACTOR_BASE = 4096
-PALETTES_JSON_PATH = "resources/palettes-c16-n1024.json"
+PALETTES_JSON_PATH = "resources/lospec-palettes-c16-n1024.json"
 
 
 class MainWindow(QMainWindow):
